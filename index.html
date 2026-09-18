@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
+<title>TRINETRA · Global Intelligence Dashboard</title>
+<meta name="description" content="TRINETRA - Cinematic global intelligence dashboard. Live flights, earthquakes, ISS, weather, crypto. 100% free, entertainment only.">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='40' fill='none' stroke='%2300ff41' stroke-width='4'/><circle cx='50' cy='50' r='12' fill='%2300ff41'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='40' fill='none' stroke='%2300ff41' stroke-width='4'/><circle cx='50' cy='50' r='12' fill='%2300ff41'/></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--c:#00ff41;--c2:#00ccff;--c3:#ffcc00;--c4:#ff0033;--bg:#000;--panel:rgba(0,15,0,.78);--border:rgba(0,255,65,.4);}
+[data-theme="light"]{--c:#006622;--c2:#0066aa;--c3:#aa7700;--c4:#cc0022;--bg:#f0f4f0;--panel:rgba(255,255,255,.9);--border:rgba(0,102,34,.3);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+html,body{width:100%;overflow-x:hidden;background:var(--bg);color:var(--c);font-family:'Share Tech Mono',monospace;transition:background .4s,color .4s;}
+body{min-height:100vh;position:relative;overflow-y:auto;}
+#matrix{position:fixed;inset:0;z-index:0;opacity:.12;pointer-events:none;}
+[data-theme="light"] #matrix{opacity:.06;}
+#bgGrid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(0,255,65,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,65,.05) 1px,transparent 1px);background-size:40px 40px;}
+
+/* BOOT */
+.boot{position:fixed;inset:0;background:#000;z-index:9999;padding:20px;display:flex;flex-direction:column;justify-content:center;overflow-y:auto;transition:opacity .8s;}
+.boot.hide{opacity:0;pointer-events:none;}
+.boot-logo{text-align:center;margin-bottom:24px;font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,6vw,2.4rem);font-weight:900;color:#00ff41;text-shadow:0 0 20px #00ff41;letter-spacing:6px;animation:glitchLogo 3s infinite;}
+.boot-logo .sub{font-size:.55em;letter-spacing:3px;opacity:.7;display:block;margin-top:6px;font-weight:400;}
+@keyframes glitchLogo{0%,100%{text-shadow:0 0 20px #00ff41;}50%{text-shadow:0 0 40px #00ff41,0 0 80px #00ff41,0 0 120px #00ff41;}}
+.boot-terminal{max-width:620px;margin:0 auto;width:100%;font-size:.72rem;line-height:1.7;color:#00ff41;}
+.boot-terminal .line{opacity:0;animation:typeIn .4s forwards;}
+@keyframes typeIn{to{opacity:1;}}
+.boot-bar{width:100%;max-width:400px;margin:20px auto 0;height:6px;background:#001a00;border:1px solid #00ff41;overflow:hidden;border-radius:3px;}
+.boot-bar-inner{height:100%;width:0%;background:linear-gradient(90deg,#00ff41,#00ffaa);box-shadow:0 0 15px #00ff41;animation:bootBar 4s ease-out forwards;}
+@keyframes bootBar{0%{width:0;}30%{width:35%;}60%{width:70%;}100%{width:100%;}}
+.boot-status{text-align:center;margin-top:14px;font-size:.7rem;color:#00ff41;letter-spacing:2px;}
+
+/* MAIN */
+.main{position:relative;z-index:1;padding:10px;min-height:100vh;opacity:0;transition:opacity 1s;max-width:1500px;margin:0 auto;}
+.main.visible{opacity:1;}
+
+/* HEADER */
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--panel);border:1px solid var(--c);border-radius:8px;margin-bottom:10px;backdrop-filter:blur(12px);flex-wrap:wrap;gap:8px;}
+.hdr-logo{font-family:'Orbitron',sans-serif;font-weight:900;font-size:1.05rem;color:var(--c);text-shadow:0 0 10px var(--c);letter-spacing:3px;display:flex;align-items:center;gap:8px;}
+.hdr-logo i{animation:eyeBlink 4s infinite;}
+@keyframes eyeBlink{0%,90%,100%{transform:scaleY(1);}95%{transform:scaleY(.1);}}
+.hdr-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.hdr-btn{background:rgba(0,255,65,.1);border:1px solid var(--c);color:var(--c);padding:6px 9px;border-radius:6px;font-size:.66rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;}
+.hdr-btn:active{background:rgba(0,255,65,.3);}
+.hdr-status{font-size:.6rem;color:var(--c);display:flex;align-items:center;gap:5px;padding:4px 8px;background:rgba(0,255,65,.08);border-radius:4px;}
+.dot-live{width:7px;height:7px;background:var(--c);border-radius:50%;box-shadow:0 0 8px var(--c);animation:pulseLive 1.5s infinite;}
+@keyframes pulseLive{0%,100%{opacity:1;}50%{opacity:.3;}}
+.clock{font-size:.62rem;color:var(--c);padding:4px 8px;background:rgba(0,255,65,.08);border-radius:4px;border:1px solid var(--border);}
+.clock b{color:var(--c3);}
+
+/* TICKER */
+.ticker{background:var(--panel);border:1px solid var(--c);border-radius:6px;padding:8px 10px;margin-bottom:10px;overflow:hidden;position:relative;}
+.ticker::before{content:'▸ LIVE';position:absolute;left:0;top:0;bottom:0;background:var(--c);color:#000;padding:8px 10px;font-size:.6rem;font-weight:900;z-index:2;letter-spacing:1px;}
+.ticker-inner{display:flex;gap:40px;animation:tick 80s linear infinite;white-space:nowrap;font-size:.66rem;color:var(--c);margin-left:70px;}
+.ticker-inner span::before{content:'◆ ';color:var(--c3);}
+@keyframes tick{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:1fr;gap:10px;}
+@media(min-width:900px){.grid{grid-template-columns:300px 1fr 300px;}}
+@media(min-width:1200px){.grid{grid-template-columns:320px 1fr 320px;}}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--c);border-radius:8px;padding:10px;backdrop-filter:blur(12px);position:relative;overflow:hidden;margin-bottom:10px;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c),transparent);animation:scanLine 3s linear infinite;}
+@keyframes scanLine{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
+.panel-title{font-size:.66rem;color:var(--c);letter-spacing:2px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;text-transform:uppercase;gap:6px;}
+.panel-title .tt{display:flex;align-items:center;gap:6px;}
+.panel-title .rec{color:var(--c4);animation:pulseLive 1s infinite;font-size:.6rem;}
+
+/* TERMINAL */
+.terminal{height:200px;overflow-y:auto;font-size:.62rem;line-height:1.65;color:var(--c);scrollbar-width:thin;scrollbar-color:var(--c) transparent;}
+.terminal::-webkit-scrollbar{width:4px;}
+.terminal::-webkit-scrollbar-thumb{background:var(--c);border-radius:2px;}
+.terminal .log{opacity:0;animation:typeIn .3s forwards;margin-bottom:3px;word-break:break-word;}
+.terminal .log .time{color:#008822;margin-right:5px;}
+[data-theme="light"] .terminal .log .time{color:#88a588;}
+.terminal .log .warn{color:var(--c3);}
+.terminal .log .err{color:var(--c4);}
+.terminal .log .ok{color:#00ffaa;}
+.terminal .log .info{color:var(--c2);}
+
+/* MAP */
+#map{height:400px;border-radius:8px;border:1px solid var(--c);background:#000;filter:hue-rotate(70deg) saturate(1.6) brightness(.62) contrast(1.2);}
+@media(min-width:900px){#map{height:600px;}}
+[data-theme="light"] #map{filter:none;}
+.leaflet-container{background:#000!important;}
+.leaflet-tile{filter:hue-rotate(70deg) saturate(1.8) brightness(.5) contrast(1.3);}
+[data-theme="light"] .leaflet-tile{filter:none;}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#001a00!important;color:#00ff41!important;border:1px solid #00ff41!important;border-radius:6px!important;font-family:'Share Tech Mono',monospace!important;font-size:.7rem!important;}
+.leaflet-tooltip{background:#001a00!important;color:#00ff41!important;border:1px solid #00ff41!important;border-radius:4px!important;font-family:'Share Tech Mono',monospace!important;font-size:.6rem!important;padding:3px 6px!important;}
+
+/* LAYERS */
+.layers{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.layer-btn{background:rgba(0,255,65,.08);border:1px solid var(--c);color:var(--c);padding:6px 9px;border-radius:5px;font-size:.6rem;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:4px;letter-spacing:.5px;}
+.layer-btn.active{background:var(--c);color:#000;font-weight:700;}
+.layer-btn:active{transform:scale(.95);}
+
+/* SEARCH */
+.search-area{margin-top:10px;background:var(--panel);border:1px solid var(--c);border-radius:8px;padding:12px;backdrop-filter:blur(12px);}
+.search-row{display:flex;gap:8px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--c);color:var(--c);padding:12px 14px;font-family:inherit;font-size:.85rem;border-radius:6px;outline:none;}
+.search-input::placeholder{color:#008822;opacity:.6;}
+.search-input:focus{box-shadow:0 0 15px rgba(0,255,65,.4);}
+.search-btn{background:linear-gradient(135deg,var(--c),#00aa33);color:#000;border:none;padding:12px 18px;font-family:'Orbitron',sans-serif;font-weight:900;font-size:.78rem;letter-spacing:1px;border-radius:6px;cursor:pointer;box-shadow:0 0 20px rgba(0,255,65,.5);display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.search-btn:active{transform:scale(.97);}
+.search-btn:disabled{opacity:.5;cursor:wait;}
+.search-hint{font-size:.6rem;color:#008822;margin-top:6px;text-align:center;line-height:1.5;}
+
+/* SCANNING */
+.scanning{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:5000;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;text-align:center;overflow-y:auto;}
+.scanning.active{display:flex;}
+.scan-radar{width:180px;height:180px;border-radius:50%;border:2px solid var(--c);position:relative;margin-bottom:22px;box-shadow:0 0 40px rgba(0,255,65,.4),inset 0 0 40px rgba(0,255,65,.2);flex-shrink:0;}
+.scan-radar::before,.scan-radar::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:1px solid rgba(0,255,65,.4);border-radius:50%;}
+.scan-radar::before{width:70%;height:70%;}
+.scan-radar::after{width:40%;height:40%;}
+.scan-sweep{position:absolute;top:50%;left:50%;width:50%;height:2px;background:linear-gradient(90deg,var(--c),transparent);transform-origin:left center;animation:sweep 1.5s linear infinite;box-shadow:0 0 20px var(--c);}
+@keyframes sweep{0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
+.scan-text{font-family:'Orbitron',sans-serif;font-size:clamp(.85rem,3vw,.95rem);color:var(--c);letter-spacing:3px;margin-bottom:8px;text-shadow:0 0 15px var(--c);}
+.scan-sub{font-size:.72rem;color:var(--c);margin-bottom:18px;letter-spacing:1px;}
+.scan-progress{width:280px;max-width:88%;height:4px;background:#001a00;border:1px solid var(--c);border-radius:2px;overflow:hidden;}
+.scan-progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--c),#00ffaa);box-shadow:0 0 15px var(--c);transition:width .4s ease;}
+.scan-lines{margin-top:18px;font-size:.62rem;color:var(--c);text-align:left;max-width:340px;width:100%;line-height:1.8;height:110px;overflow:hidden;}
+
+/* RESULTS */
+.results{display:none;margin-top:10px;gap:10px;flex-direction:column;}
+.results.active{display:flex;animation:modalIn .4s ease;}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.result-box{background:var(--panel);border:1px solid var(--c);border-radius:8px;padding:12px;backdrop-filter:blur(12px);}
+.result-title{font-size:.66rem;color:var(--c);letter-spacing:2px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;text-transform:uppercase;}
+.result-title i{color:var(--c3);}
+.result-item{font-size:.68rem;color:var(--c);padding:5px 0;border-bottom:1px dashed var(--border);display:flex;justify-content:space-between;gap:10px;line-height:1.5;}
+.result-item:last-child{border-bottom:none;}
+.result-item .key{color:#008822;font-weight:700;white-space:nowrap;font-size:.62rem;}
+[data-theme="light"] .result-item .key{color:#4a7a4a;}
+.result-item .val{color:var(--c);text-align:right;word-break:break-word;font-weight:600;}
+
+/* FEED */
+.feed{width:100%;height:170px;border:1px solid var(--c);border-radius:6px;background:#000;position:relative;overflow:hidden;margin-bottom:8px;}
+.feed video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+.feed-overlay{position:absolute;top:8px;left:8px;font-size:.58rem;color:var(--c4);background:rgba(0,0,0,.75);padding:3px 8px;border-radius:3px;display:flex;align-items:center;gap:5px;font-weight:700;letter-spacing:1px;}
+.feed-overlay .rec-dot{width:8px;height:8px;background:var(--c4);border-radius:50%;animation:pulseLive 1s infinite;}
+.feed-corners{position:absolute;inset:0;pointer-events:none;}
+.feed-corners span{position:absolute;width:14px;height:14px;border-color:var(--c);border-style:solid;border-width:0;}
+.feed-corners span:nth-child(1){top:6px;left:6px;border-top-width:2px;border-left-width:2px;}
+.feed-corners span:nth-child(2){top:6px;right:6px;border-top-width:2px;border-right-width:2px;}
+.feed-corners span:nth-child(3){bottom:6px;left:6px;border-bottom-width:2px;border-left-width:2px;}
+.feed-corners span:nth-child(4){bottom:6px;right:6px;border-bottom-width:2px;border-right-width:2px;}
+.feed-crosshair{position:absolute;top:50%;left:50%;width:60px;height:60px;transform:translate(-50%,-50%);border:1px solid rgba(0,255,65,.5);border-radius:50%;pointer-events:none;}
+.feed-crosshair::before,.feed-crosshair::after{content:'';position:absolute;background:rgba(0,255,65,.6);}
+.feed-crosshair::before{top:50%;left:-20px;right:-20px;height:1px;}
+.feed-crosshair::after{left:50%;top:-20px;bottom:-20px;width:1px;}
+.visualizer{width:100%;height:55px;background:#000;border:1px solid var(--c);border-radius:6px;display:block;}
+
+/* THREAT */
+.threat{margin-top:8px;}
+.threat-label{display:flex;justify-content:space-between;font-size:.66rem;color:var(--c);margin-bottom:5px;}
+.threat-bar{height:12px;background:#001a00;border:1px solid var(--c);border-radius:6px;overflow:hidden;}
+.threat-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--c),var(--c3),var(--c4));transition:width 1.5s ease;box-shadow:0 0 15px rgba(255,0,51,.6);}
+
+/* WIDGETS */
+.widgets{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+.widget{background:rgba(0,20,0,.5);border:1px solid var(--border);border-radius:6px;padding:8px;}
+[data-theme="light"] .widget{background:rgba(255,255,255,.5);}
+.widget .wlabel{font-size:.55rem;color:#008822;letter-spacing:1px;margin-bottom:3px;font-weight:700;}
+[data-theme="light"] .widget .wlabel{color:#4a7a4a;}
+.widget .wvalue{font-size:.82rem;color:var(--c);font-weight:700;word-break:break-word;}
+.widget .wsub{font-size:.55rem;color:#008822;margin-top:2px;}
+[data-theme="light"] .widget .wsub{color:#4a7a4a;}
+.widget.warn{border-color:rgba(255,204,0,.5);}
+.widget.warn .wvalue{color:var(--c3);}
+.widget.err{border-color:rgba(255,0,51,.5);}
+.widget.err .wvalue{color:var(--c4);}
+.widget.full{grid-column:span 2;}
+
+/* ACTION */
+.action-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.action-btn{flex:1;min-width:70px;background:rgba(0,255,65,.1);border:1px solid var(--c);color:var(--c);padding:9px 6px;font-size:.6rem;font-family:inherit;border-radius:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:700;letter-spacing:.5px;}
+.action-btn:active{background:rgba(0,255,65,.3);}
+.action-btn i{font-size:.9rem;}
+
+/* SHARE */
+.share-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center;}
+.share-btn{width:42px;height:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;border:none;cursor:pointer;padding:0;font-family:inherit;text-decoration:none;}
+.share-btn.whatsapp{background:#25D366;}.share-btn.facebook{background:#1877F2;}.share-btn.twitter{background:#000;border:1px solid rgba(128,128,128,.3);}
+.share-btn.telegram{background:#0088cc;}.share-btn.linkedin{background:#0A66C2;}.share-btn.email{background:#EA4335;}
+.share-btn.instagram{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);}.share-btn.copy{background:#475569;}
+.share-btn:active{transform:scale(.9);}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+.stat{background:rgba(0,20,0,.5);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;}
+[data-theme="light"] .stat{background:rgba(255,255,255,.5);}
+.stat .sv{font-size:1rem;color:var(--c);font-weight:700;line-height:1.2;}
+.stat .sl{font-size:.55rem;color:#008822;margin-top:3px;letter-spacing:.8px;}
+[data-theme="light"] .stat .sl{color:#4a7a4a;}
+.stat.green .sv{color:var(--c);}
+.stat.purple .sv{color:#818cf8;}
+.stat.yellow .sv{color:var(--c3);}
+
+/* FOOTER */
+.ftr{margin-top:14px;padding:14px 12px;text-align:center;font-size:.6rem;color:#008822;border-top:1px solid var(--border);line-height:1.7;}
+[data-theme="light"] .ftr{color:#4a7a4a;}
+.ftr b{color:var(--c);}
+.ftr .made{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:6px;}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+.modal.open{display:flex;}
+.modal-content{background:rgba(0,15,0,.97);border:1px solid var(--c);border-radius:12px;padding:20px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,255,65,.4);margin:auto;}
+[data-theme="light"] .modal-content{background:#fff;color:#006622;}
+.modal-content h3{font-family:'Orbitron',sans-serif;color:var(--c);font-size:.95rem;margin-bottom:12px;letter-spacing:2px;display:flex;align-items:center;gap:8px;}
+.modal-content p{font-size:.72rem;color:var(--c);line-height:1.75;margin-bottom:10px;}
+.modal-content b{color:#00ffaa;}
+[data-theme="light"] .modal-content b{color:#008844;}
+.lang-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;}
+.lang-opt{padding:9px 6px;background:rgba(0,255,65,.05);border:1px solid var(--c);color:var(--c);font-family:inherit;font-size:.7rem;border-radius:6px;cursor:pointer;}
+.lang-opt.active{background:var(--c);color:#000;font-weight:700;}
+.modal-close{margin-top:12px;width:100%;background:rgba(0,255,65,.15);border:1px solid var(--c);color:var(--c);padding:10px;font-family:inherit;border-radius:6px;cursor:pointer;font-weight:700;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--c);color:#000;padding:11px 20px;border-radius:50px;font-weight:700;font-size:.72rem;z-index:9999;transition:transform .4s ease;pointer-events:none;box-shadow:0 0 25px rgba(0,255,65,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88%;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ALERT FLASH */
+.alert-flash{position:fixed;inset:0;background:rgba(255,0,51,.15);z-index:8000;pointer-events:none;opacity:0;}
+.alert-flash.active{animation:flashRed .6s ease;}
+@keyframes flashRed{0%,100%{opacity:0;}50%{opacity:1;}}
+
+@media(max-width:500px){
+  .hdr-logo{font-size:.85rem;letter-spacing:2px;}
+  .hdr-btn{padding:5px 7px;font-size:.58rem;}
+  .hdr-status{font-size:.55rem;padding:3px 6px;}
+  .clock{font-size:.55rem;padding:3px 6px;}
+  #map{height:300px;}
+  .terminal{height:150px;}
+  .feed{height:140px;}
+  .search-btn{padding:11px 12px;font-size:.7rem;}
+  .scan-radar{width:150px;height:150px;}
+  .share-btn{width:38px;height:38px;font-size:.9rem;}
+  .action-btn{font-size:.55rem;padding:8px 4px;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+<div id="bgGrid"></div>
+
+<!-- BOOT -->
+<div class="boot" id="bootScreen">
+  <div class="boot-logo">TRINETRA<span class="sub">ALL-SEEING INTELLIGENCE</span></div>
+  <div class="boot-terminal" id="bootTerminal"></div>
+  <div class="boot-bar"><div class="boot-bar-inner"></div></div>
+  <div class="boot-status" id="bootStatus">INITIALIZING...</div>
+</div>
+
+<!-- SCAN -->
+<div class="scanning" id="scanning">
+  <div class="scan-radar"><div class="scan-sweep"></div></div>
+  <div class="scan-text" id="scanText">SCANNING GLOBAL NETWORK</div>
+  <div class="scan-sub" id="scanSub">Connecting to satellites...</div>
+  <div class="scan-progress"><div class="scan-progress-bar" id="scanBar"></div></div>
+  <div class="scan-lines" id="scanLines"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main">
+  <div class="hdr">
+    <div class="hdr-logo"><i class="fas fa-eye"></i> TRINETRA</div>
+    <div class="hdr-right">
+      <div class="clock"><b id="clockUTC">--:--:--</b> UTC</div>
+      <span class="hdr-status"><span class="dot-live"></span> <span data-i18n="live">LIVE</span></span>
+      <button class="hdr-btn" id="themeBtn" title="Theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+      <button class="hdr-btn" id="langBtn" title="Language"><i class="fas fa-globe"></i></button>
+      <button class="hdr-btn" id="shareTopBtn" title="Share"><i class="fas fa-share-nodes"></i></button>
+      <button class="hdr-btn" id="aboutBtn" title="About"><i class="fas fa-circle-info"></i></button>
+      <button class="hdr-btn" id="soundBtn" title="Sound"><i class="fas fa-volume-up" id="soundIcon"></i></button>
+    </div>
+  </div>
+
+  <div class="ticker"><div class="ticker-inner" id="tickerContent"></div></div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div>
+      <div class="panel">
+        <div class="panel-title"><div class="tt"><i class="fas fa-terminal"></i> <span data-i18n="syslog">System Log</span></div><span class="rec">● REC</span></div>
+        <div class="terminal" id="terminal"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><div class="tt"><i class="fas fa-globe"></i> <span data-i18n="globalData">Global Feeds</span></div></div>
+        <div class="widgets">
+          <div class="widget"><div class="wlabel">ISS POSITION</div><div class="wvalue" id="wISS">—</div><div class="wsub" id="wISSsub">loading</div></div>
+          <div class="widget"><div class="wlabel">FLIGHTS · IN</div><div class="wvalue" id="wFlights">—</div><div class="wsub" data-i18n="opensky">OpenSky</div></div>
+          <div class="widget warn"><div class="wlabel">EARTHQUAKES</div><div class="wvalue" id="wQuakes">—</div><div class="wsub" id="wQuakesSub">M2.5+ 24h</div></div>
+          <div class="widget"><div class="wlabel">BITCOIN</div><div class="wvalue" id="wBTC">—</div><div class="wsub" id="wBTCsub">USD</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div>
+      <div id="map"></div>
+      <div class="layers">
+        <button class="layer-btn active" data-layer="sat"><i class="fas fa-satellite"></i> SAT</button>
+        <button class="layer-btn active" data-layer="flights"><i class="fas fa-plane"></i> FLIGHTS</button>
+        <button class="layer-btn active" data-layer="quakes"><i class="fas fa-house-crack"></i> QUAKES</button>
+        <button class="layer-btn active" data-layer="cities"><i class="fas fa-city"></i> CITIES</button>
+        <button class="layer-btn" data-layer="iss"><i class="fas fa-satellite-dish"></i> ISS</button>
+      </div>
+
+      <div class="search-area">
+        <div class="search-row">
+          <input type="text" class="search-input" id="targetInput" placeholder="Enter target name..." maxlength="30" autocomplete="off">
+          <button class="search-btn" id="searchBtn"><i class="fas fa-crosshairs"></i> <span data-i18n="track">TRACK</span></button>
+        </div>
+        <div class="search-hint" data-i18n="hint">⚠️ Entertainment only. Real data is public. Your device info stays on your device.</div>
+      </div>
+
+      <div class="results" id="results">
+        <div class="result-box">
+          <div class="result-title"><i class="fas fa-user-ninja"></i> <span data-i18n="targetInfo">Target Intel</span></div>
+          <div class="result-item"><span class="key">NAME</span><span class="val" id="rName">—</span></div>
+          <div class="result-item"><span class="key">LOCATION</span><span class="val" id="rLocation">—</span></div>
+          <div class="result-item"><span class="key">GPS</span><span class="val" id="rGps">—</span></div>
+          <div class="result-item"><span class="key">PHONE</span><span class="val" id="rPhone">—</span></div>
+          <div class="result-item"><span class="key">DEVICE</span><span class="val" id="rDevice">—</span></div>
+          <div class="result-item"><span class="key">IP</span><span class="val" id="rIp">—</span></div>
+          <div class="result-item"><span class="key">BATTERY</span><span class="val" id="rBattery">—</span></div>
+          <div class="result-item"><span class="key">NETWORK</span><span class="val" id="rNetwork">—</span></div>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title"><i class="fas fa-camera"></i> <span data-i18n="liveFeed">Live Feed</span></div>
+          <div class="feed" id="feedBox" style="display:none;">
+            <video id="camFeed" autoplay playsinline muted></video>
+            <div class="feed-overlay"><span class="rec-dot"></span> LIVE · CAM-01</div>
+            <div class="feed-corners"><span></span><span></span><span></span><span></span></div>
+            <div class="feed-crosshair"></div>
+          </div>
+          <canvas class="visualizer" id="audioViz"></canvas>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title"><i class="fas fa-share-nodes"></i> <span data-i18n="social">Social Handles (Simulated)</span></div>
+          <div class="result-item"><span class="key"><i class="fab fa-whatsapp"></i> WA</span><span class="val" id="rWhatsapp">—</span></div>
+          <div class="result-item"><span class="key"><i class="fab fa-instagram"></i> IG</span><span class="val" id="rInsta">—</span></div>
+          <div class="result-item"><span class="key"><i class="fab fa-facebook"></i> FB</span><span class="val" id="rFacebook">—</span></div>
+          <div class="result-item"><span class="key"><i class="fab fa-telegram"></i> TG</span><span class="val" id="rTelegram">—</span></div>
+          <div class="result-item"><span class="key"><i class="fab fa-x-twitter"></i> X</span><span class="val" id="rTwitter">—</span></div>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title"><i class="fas fa-triangle-exclamation"></i> <span data-i18n="threat">Threat Level</span></div>
+          <div class="threat">
+            <div class="threat-label"><span data-i18n="risk">Risk</span> <span id="riskVal">0%</span></div>
+            <div class="threat-bar"><div class="threat-fill" id="threatFill"></div></div>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" id="shareBtn"><i class="fas fa-share-nodes"></i><span data-i18n="share">Share</span></button>
+            <button class="action-btn" id="resetBtn"><i class="fas fa-rotate-left"></i><span data-i18n="reset">Reset</span></button>
+          </div>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title"><i class="fas fa-share-nodes"></i> <span data-i18n="shareTitle">Share TRINETRA</span></div>
+          <div class="share-grid">
+            <a class="share-btn whatsapp" id="sW" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i></a>
+            <a class="share-btn facebook" id="sF" target="_blank" rel="noopener"><i class="fab fa-facebook-f"></i></a>
+            <a class="share-btn twitter" id="sX" target="_blank" rel="noopener"><i class="fab fa-x-twitter"></i></a>
+            <a class="share-btn telegram" id="sT" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i></a>
+            <a class="share-btn linkedin" id="sL" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i></a>
+            <a class="share-btn email" id="sE"><i class="fas fa-envelope"></i></a>
+            <button class="share-btn instagram" id="sI"><i class="fab fa-instagram"></i></button>
+            <button class="share-btn copy" id="sC"><i class="fas fa-link"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <div class="panel">
+        <div class="panel-title"><div class="tt"><i class="fas fa-tower-broadcast"></i> <span data-i18n="realTime">Live Feeds</span></div></div>
+        <div class="widget full"><div class="wlabel">NEWEST EARTHQUAKE</div><div class="wvalue" id="wLastQuake">—</div><div class="wsub" id="wLastQuakeSub">waiting...</div></div>
+        <div class="widget full" style="margin-top:6px;"><div class="wlabel">WEATHER · DELHI</div><div class="wvalue" id="wWeather">—</div><div class="wsub" id="wWeatherSub">loading...</div></div>
+        <div class="widget full" style="margin-top:6px;"><div class="wlabel">GLOBAL FLIGHTS</div><div class="wvalue" id="wFlightCount">—</div><div class="wsub">via OpenSky</div></div>
+        <div class="widget full" style="margin-top:6px;"><div class="wlabel">SPACE WEATHER</div><div class="wvalue" id="wSpace">—</div><div class="wsub" id="wSpaceSub">NOAA · quiet</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><div class="tt"><i class="fas fa-chart-simple"></i> <span data-i18n="stats">Session Stats</span></div></div>
+        <div class="stats-grid">
+          <div class="stat green"><div class="sv" id="stScans">0</div><div class="sl">SCANS</div></div>
+          <div class="stat purple"><div class="sv" id="stTargets">0</div><div class="sl">TARGETS</div></div>
+          <div class="stat yellow"><div class="sv" id="stUptime">0s</div><div class="sl">UPTIME</div></div>
+          <div class="stat"><div class="sv" id="stLayers">5</div><div class="sl">LAYERS</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><div class="tt"><i class="fas fa-sliders"></i> <span data-i18n="actions">Actions</span></div></div>
+        <div class="action-row">
+          <button class="action-btn" id="btnScan"><i class="fas fa-satellite"></i><span data-i18n="satScan">Scan</span></button>
+          <button class="action-btn" id="btnVoice"><i class="fas fa-microphone"></i><span data-i18n="voice">Voice</span></button>
+        </div>
+        <div class="action-row">
+          <button class="action-btn" id="btnAlarm"><i class="fas fa-bell"></i><span data-i18n="alarm">Alarm</span></button>
+          <button class="action-btn" id="btnFull"><i class="fas fa-expand"></i><span data-i18n="full">Full</span></button>
+        </div>
+        <div class="action-row">
+          <button class="action-btn" id="btnAnon"><i class="fas fa-user-secret"></i><span data-i18n="anon">Anon</span></button>
+          <button class="action-btn" id="btnRestart"><i class="fas fa-power-off"></i><span data-i18n="restart">Restart</span></button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><div class="tt"><i class="fas fa-shield-halved"></i> <span data-i18n="privacy">Privacy</span></div></div>
+        <p style="font-size:.62rem;line-height:1.7;color:var(--c);" data-i18n="privacyText">🔒 No data collected. All real data is public. Your camera/mic is used only locally.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ftr">
+    <b>TRINETRA v1.0</b> · <span data-i18n="footer">Simulation for entertainment only. Real data: OpenSky, USGS, Open-Meteo, ISS API, CoinGecko.</span>
+    <br><span data-i18n="footer2">No personal data is collected, stored, or transmitted. 100% client-side.</span>
+    <div class="made">Made with <i class="fas fa-heart" style="color:#f472b6;"></i> in India 🇮🇳</div>
+  </div>
+</div>
+
+<div class="alert-flash" id="alertFlash"></div>
+
+<!-- LANGUAGE MODAL -->
+<div class="modal" id="langModal">
+  <div class="modal-content">
+    <h3><i class="fas fa-globe"></i> <span data-i18n="chooseLang">Choose Language</span></h3>
+    <div class="lang-grid" id="langGrid"></div>
+    <button class="modal-close" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<!-- ABOUT MODAL -->
+<div class="modal" id="aboutModal">
+  <div class="modal-content">
+    <h3><i class="fas fa-eye"></i> TRINETRA</h3>
+    <p><b data-i18n="aboutP1">Cinematic global intelligence dashboard for entertainment. Built entirely with free, public APIs.</b></p>
+    <p><b data-i18n="aboutP2">Real data:</b> <span data-i18n="aboutP2S">OpenSky (flights), USGS (earthquakes), Open-Meteo (weather), ISS location, CoinGecko (crypto).</span></p>
+    <p><b data-i18n="aboutP3">Simulated:</b> <span data-i18n="aboutP3S">social handles, phone numbers, IP addresses, contacts.</span></p>
+    <p><b data-i18n="aboutP4">Privacy:</b> <span data-i18n="aboutP4S">100% client-side. No server. No tracking. No cookies. Camera/mic only for local demo effect.</span></p>
+    <p style="margin-top:12px;font-size:.68rem;color:#008822;"><span data-i18n="aboutP5">Made with 💚 for fun. Not for real surveillance.</span></p>
+    <button class="modal-close" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal" id="shareModal">
+  <div class="modal-content">
+    <h3><i class="fas fa-share-nodes"></i> <span data-i18n="shareTitle">Share TRINETRA</span></h3>
+    <p style="font-size:.7rem;text-align:center;" data-i18n="shareSub">Send TRINETRA to your friends — it's free & fun!</p>
+    <div class="share-grid" style="margin-top:12px;">
+      <a class="share-btn whatsapp" id="mW" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i></a>
+      <a class="share-btn facebook" id="mF" target="_blank" rel="noopener"><i class="fab fa-facebook-f"></i></a>
+      <a class="share-btn twitter" id="mX" target="_blank" rel="noopener"><i class="fab fa-x-twitter"></i></a>
+      <a class="share-btn telegram" id="mT" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i></a>
+      <a class="share-btn linkedin" id="mL" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i></a>
+      <a class="share-btn email" id="mE"><i class="fas fa-envelope"></i></a>
+      <button class="share-btn instagram" id="mI"><i class="fab fa-instagram"></i></button>
+      <button class="share-btn copy" id="mC"><i class="fas fa-link"></i></button>
+    </div>
+    <button class="modal-close" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ============ i18n ============
+var T = {
+en:{live:"LIVE",syslog:"System Log",globalData:"Global Feeds",opensky:"OpenSky",track:"TRACK",hint:"⚠️ Entertainment only. Real data is public. Your device info stays on your device.",targetInfo:"Target Intel",liveFeed:"Live Feed",social:"Social Handles (Simulated)",threat:"Threat Level",risk:"Risk",share:"Share",reset:"Reset",realTime:"Live Feeds",actions:"Actions",satScan:"Scan",voice:"Voice",alarm:"Alarm",full:"Full",anon:"Anon",restart:"Restart",privacy:"Privacy",privacyText:"🔒 No data collected. All real data is public. Your camera/mic is used only locally.",footer:"Simulation for entertainment only. Real data: OpenSky, USGS, Open-Meteo, ISS API, CoinGecko.",footer2:"No personal data is collected, stored, or transmitted. 100% client-side.",chooseLang:"Choose Language",close:"Close",shareTitle:"Share TRINETRA",shareSub:"Send TRINETRA to your friends — it's free & fun!",
+aboutP1:"Cinematic global intelligence dashboard for entertainment. Built entirely with free, public APIs.",aboutP2:"Real data:",aboutP2S:"OpenSky (flights), USGS (earthquakes), Open-Meteo (weather), ISS location, CoinGecko (crypto).",aboutP3:"Simulated:",aboutP3S:"social handles, phone numbers, IP addresses, contacts.",aboutP4:"Privacy:",aboutP4S:"100% client-side. No server. No tracking. No cookies. Camera/mic only for local demo effect.",aboutP5:"Made with 💚 for fun. Not for real surveillance.",stats:"Session Stats",
+scanGlobal:"SCANNING GLOBAL NETWORK",scanAccess:"Accessing public feeds...",scanSat:"Connecting to satellites...",scanFace:"Running recognition...",scanFound:"TARGET LOCKED"},
+hi:{live:"लाइव",syslog:"सिस्टम लॉग",globalData:"वैश्विक फीड",opensky:"OpenSky",track:"ट्रैक",hint:"⚠️ केवल मनोरंजन। असली डेटा सार्वजनिक है। आपकी डिवाइस जानकारी आपके पास रहती है।",targetInfo:"टारगेट जानकारी",liveFeed:"लाइव फीड",social:"सोशल हैंडल (नकली)",threat:"खतरा स्तर",risk:"जोखिम",share:"शेयर",reset:"रीसेट",realTime:"लाइव फीड",actions:"काम",satScan:"स्कैन",voice:"आवाज़",alarm:"अलार्म",full:"फुल",anon:"गुप्त",restart:"रीस्टार्ट",privacy:"प्राइवेसी",privacyText:"🔒 कोई डेटा नहीं। सारा असली डेटा सार्वजनिक है। कैमरा/माइक सिर्फ लोकल।",footer:"केवल मनोरंजन। असली स्रोत: OpenSky, USGS, Open-Meteo, ISS, CoinGecko।",footer2:"कोई व्यक्तिगत डेटा एकत्र नहीं। 100% क्लाइंट-साइड।",chooseLang:"भाषा चुनें",close:"बंद",shareTitle:"TRINETRA शेयर करें",shareSub:"दोस्तों को TRINETRA भेजें — मुफ्त और मजेदार!",
+aboutP1:"मनोरंजन के लिए सिनेमैटिक ग्लोबल डैशबोर्ड। मुफ्त पब्लिक API से बना।",aboutP2:"असली डेटा:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko।",aboutP3:"नकली:",aboutP3S:"सोशल हैंडल, फोन, IP, संपर्क।",aboutP4:"प्राइवेसी:",aboutP4S:"100% क्लाइंट-साइड। कोई सर्वर नहीं।",aboutP5:"💚 मज़े के लिए। असली निगरानी के लिए नहीं।",stats:"आंकड़े",
+scanGlobal:"ग्लोबल नेटवर्क स्कैन",scanAccess:"पब्लिक फीड एक्सेस...",scanSat:"सैटेलाइट जुड़ रहा...",scanFace:"पहचान...",scanFound:"टारगेट लॉक"},
+es:{live:"VIVO",syslog:"Registro",globalData:"Feeds Globales",opensky:"OpenSky",track:"RASTREAR",hint:"⚠️ Solo entretenimiento.",targetInfo:"Info Objetivo",liveFeed:"Feed",social:"Redes (Simuladas)",threat:"Amenaza",risk:"Riesgo",share:"Compartir",reset:"Reiniciar",realTime:"Feeds",actions:"Acciones",satScan:"Satélite",voice:"Voz",alarm:"Alarma",full:"Pantalla",anon:"Anon",restart:"Reiniciar",privacy:"Privacidad",privacyText:"🔒 Sin recolección.",footer:"Solo entretenimiento.",footer2:"100% cliente.",chooseLang:"Idioma",close:"Cerrar",shareTitle:"Compartir TRINETRA",shareSub:"¡Envíalo a tus amigos!",
+aboutP1:"Dashboard cinematográfico.",aboutP2:"Datos reales:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"Simulado:",aboutP3S:"redes, teléfonos, IPs.",aboutP4:"Privacidad:",aboutP4S:"100% cliente.",aboutP5:"💚 Por diversión.",stats:"Stats",
+scanGlobal:"ESCANEANDO RED",scanAccess:"Accediendo feeds...",scanSat:"Conectando...",scanFace:"Reconociendo...",scanFound:"OBJETIVO BLOQUEADO"},
+fr:{live:"DIRECT",syslog:"Journal",globalData:"Flux Globaux",opensky:"OpenSky",track:"PISTER",hint:"⚠️ Divertissement uniquement.",targetInfo:"Info Cible",liveFeed:"Flux Live",social:"Réseaux (Simulés)",threat:"Menace",risk:"Risque",share:"Partager",reset:"Reset",realTime:"Flux",actions:"Actions",satScan:"Satellite",voice:"Voix",alarm:"Alarme",full:"Plein",anon:"Anon",restart:"Redémarrer",privacy:"Confidentialité",privacyText:"🔒 Aucune collecte.",footer:"Divertissement uniquement.",footer2:"100% client.",chooseLang:"Langue",close:"Fermer",shareTitle:"Partager TRINETRA",shareSub:"Partagez avec vos amis !",
+aboutP1:"Dashboard cinématographique.",aboutP2:"Données réelles:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"Simulé:",aboutP3S:"réseaux, téléphones, IPs.",aboutP4:"Confidentialité:",aboutP4S:"100% client.",aboutP5:"💚 Pour le fun.",stats:"Stats",
+scanGlobal:"SCAN RÉSEAU",scanAccess:"Accès aux flux...",scanSat:"Connexion...",scanFace:"Reconnaissance...",scanFound:"CIBLE VERROUILLÉE"},
+de:{live:"LIVE",syslog:"Protokoll",globalData:"Globale Feeds",opensky:"OpenSky",track:"VERFOLGEN",hint:"⚠️ Nur Unterhaltung.",targetInfo:"Ziel",liveFeed:"Live",social:"Sozial (Simuliert)",threat:"Bedrohung",risk:"Risiko",share:"Teilen",reset:"Reset",realTime:"Feeds",actions:"Aktionen",satScan:"Satellit",voice:"Stimme",alarm:"Alarm",full:"Voll",anon:"Anon",restart:"Neustart",privacy:"Datenschutz",privacyText:"🔒 Keine Datenerfassung.",footer:"Nur Unterhaltung.",footer2:"100% client.",chooseLang:"Sprache",close:"Schließen",shareTitle:"TRINETRA teilen",shareSub:"An Freunde senden!",
+aboutP1:"Filmreifes Dashboard.",aboutP2:"Echte Daten:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"Simuliert:",aboutP3S:"soziale, Telefon, IPs.",aboutP4:"Datenschutz:",aboutP4S:"100% client.",aboutP5:"💚 Für Spaß.",stats:"Stats",
+scanGlobal:"NETZWERK SCANNEN",scanAccess:"Feeds zugreifen...",scanSat:"Verbinden...",scanFace:"Erkennung...",scanFound:"ZIEL ERFASST"},
+pt:{live:"AO VIVO",syslog:"Log",globalData:"Feeds Globais",opensky:"OpenSky",track:"RASTREAR",hint:"⚠️ Apenas entretenimento.",targetInfo:"Info Alvo",liveFeed:"Feed",social:"Redes (Simuladas)",threat:"Ameaça",risk:"Risco",share:"Compartilhar",reset:"Reset",realTime:"Feeds",actions:"Ações",satScan:"Satélite",voice:"Voz",alarm:"Alarme",full:"Tela",anon:"Anon",restart:"Reiniciar",privacy:"Privacidade",privacyText:"🔒 Sem coleta.",footer:"Apenas entretenimento.",footer2:"100% cliente.",chooseLang:"Idioma",close:"Fechar",shareTitle:"Compartilhar TRINETRA",shareSub:"Envie aos amigos!",
+aboutP1:"Dashboard cinematográfico.",aboutP2:"Dados reais:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"Simulado:",aboutP3S:"redes, telefones, IPs.",aboutP4:"Privacidade:",aboutP4S:"100% cliente.",aboutP5:"💚 Por diversão.",stats:"Stats",
+scanGlobal:"ESCANEANDO",scanAccess:"Acessando feeds...",scanSat:"Conectando...",scanFace:"Reconhecendo...",scanFound:"ALVO BLOQUEADO"},
+ar:{live:"مباشر",syslog:"سجل",globalData:"بيانات عالمية",opensky:"OpenSky",track:"تتبع",hint:"⚠️ للترفيه فقط.",targetInfo:"معلومات",liveFeed:"بث",social:"حسابات (محاكاة)",threat:"تهديد",risk:"خطر",share:"مشاركة",reset:"إعادة",realTime:"بيانات",actions:"إجراءات",satScan:"قمر",voice:"صوت",alarm:"إنذار",full:"كامل",anon:"مجهول",restart:"إعادة",privacy:"خصوصية",privacyText:"🔒 لا جمع بيانات.",footer:"للترفيه فقط.",footer2:"100% عميل.",chooseLang:"اللغة",close:"إغلاق",shareTitle:"مشاركة TRINETRA",shareSub:"أرسل لأصدقائك!",
+aboutP1:"لوحة سينمائية.",aboutP2:"بيانات حقيقية:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"محاكاة:",aboutP3S:"حسابات، هواتف، IPs.",aboutP4:"خصوصية:",aboutP4S:"100% عميل.",aboutP5:"💚 للتسلية.",stats:"إحصائيات",
+scanGlobal:"مسح الشبكة",scanAccess:"الوصول...",scanSat:"الاتصال...",scanFace:"التعرف...",scanFound:"تم القفل"},
+zh:{live:"实时",syslog:"日志",globalData:"全球数据",opensky:"OpenSky",track:"追踪",hint:"⚠️ 仅供娱乐。",targetInfo:"目标",liveFeed:"实时",social:"社交(模拟)",threat:"威胁",risk:"风险",share:"分享",reset:"重置",realTime:"实时",actions:"操作",satScan:"卫星",voice:"语音",alarm:"警报",full:"全屏",anon:"匿名",restart:"重启",privacy:"隐私",privacyText:"🔒 不收集数据。",footer:"仅供娱乐。",footer2:"100% 客户端。",chooseLang:"语言",close:"关闭",shareTitle:"分享 TRINETRA",shareSub:"发送给朋友！",
+aboutP1:"电影级仪表板。",aboutP2:"真实数据:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko。",aboutP3:"模拟:",aboutP3S:"社交、电话、IP。",aboutP4:"隐私:",aboutP4S:"100% 客户端。",aboutP5:"💚 为乐趣。",stats:"统计",
+scanGlobal:"扫描网络",scanAccess:"访问数据...",scanSat:"连接卫星...",scanFace:"识别...",scanFound:"目标锁定"},
+ja:{live:"ライブ",syslog:"ログ",globalData:"グローバル",opensky:"OpenSky",track:"追跡",hint:"⚠️ 娯楽のみ。",targetInfo:"ターゲット",liveFeed:"ライブ",social:"SNS(シミュ)",threat:"脅威",risk:"リスク",share:"共有",reset:"リセット",realTime:"リアル",actions:"操作",satScan:"衛星",voice:"音声",alarm:"アラーム",full:"全画面",anon:"匿名",restart:"再起動",privacy:"プライバシー",privacyText:"🔒 データ収集なし。",footer:"娯楽のみ。",footer2:"100% クライアント。",chooseLang:"言語",close:"閉じる",shareTitle:"TRINETRAを共有",shareSub:"友達に送信！",
+aboutP1:"映画風ダッシュボード。",aboutP2:"実データ:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko。",aboutP3:"シミュ:",aboutP3S:"SNS、電話、IP。",aboutP4:"プライバシー:",aboutP4S:"100% クライアント。",aboutP5:"💚 娯楽用。",stats:"統計",
+scanGlobal:"ネットワークスキャン",scanAccess:"アクセス中...",scanSat:"接続中...",scanFace:"認識中...",scanFound:"ターゲットロック"},
+ru:{live:"В ЭФИРЕ",syslog:"Журнал",globalData:"Данные",opensky:"OpenSky",track:"ОТСЛЕЖ",hint:"⚠️ Только для развлечения.",targetInfo:"Цель",liveFeed:"Эфир",social:"Соцсети (сим)",threat:"Угроза",risk:"Риск",share:"Поделиться",reset:"Сброс",realTime:"Потоки",actions:"Действия",satScan:"Спутник",voice:"Голос",alarm:"Тревога",full:"Экран",anon:"Анон",restart:"Рестарт",privacy:"Приватность",privacyText:"🔒 Данные не собираются.",footer:"Только для развлечения.",footer2:"100% клиент.",chooseLang:"Язык",close:"Закрыть",shareTitle:"Поделиться TRINETRA",shareSub:"Отправьте друзьям!",
+aboutP1:"Кинематографический дашборд.",aboutP2:"Реальные:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"Симуляция:",aboutP3S:"соцсети, телефоны, IPs.",aboutP4:"Приватность:",aboutP4S:"100% клиент.",aboutP5:"💚 Для веселья.",stats:"Статистика",
+scanGlobal:"СКАНИРОВАНИЕ",scanAccess:"Доступ...",scanSat:"Подключение...",scanFace:"Распознавание...",scanFound:"ЦЕЛЬ ЗАХВАЧЕНА"},
+bn:{live:"লাইভ",syslog:"লগ",globalData:"ডেটা",opensky:"OpenSky",track:"ট্র্যাক",hint:"⚠️ শুধু বিনোদন।",targetInfo:"টার্গেট",liveFeed:"লাইভ",social:"সোশ্যাল",threat:"হুমকি",risk:"ঝুঁকি",share:"শেয়ার",reset:"রিসেট",realTime:"লাইভ",actions:"কাজ",satScan:"স্যাটেলাইট",voice:"ভয়েস",alarm:"অ্যালার্ম",full:"ফুল",anon:"বেনামী",restart:"রিস্টার্ট",privacy:"প্রাইভেসি",privacyText:"🔒 কোনো ডেটা সংগ্রহ নেই।",footer:"শুধু বিনোদন।",footer2:"100% ক্লায়েন্ট।",chooseLang:"ভাষা",close:"বন্ধ",shareTitle:"TRINETRA শেয়ার",shareSub:"বন্ধুদের পাঠান!",
+aboutP1:"সিনেমাটিক ড্যাশবোর্ড।",aboutP2:"আসল:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko।",aboutP3:"নকল:",aboutP3S:"সোশ্যাল, ফোন, IP।",aboutP4:"প্রাইভেসি:",aboutP4S:"100% ক্লায়েন্ট।",aboutP5:"💚 মজার জন্য।",stats:"স্ট্যাটস",
+scanGlobal:"স্ক্যান",scanAccess:"অ্যাক্সেস...",scanSat:"সংযোগ...",scanFace:"রিকগনিশন...",scanFound:"টার্গেট লক"},
+ur:{live:"لائیو",syslog:"لاگ",globalData:"ڈیٹا",opensky:"OpenSky",track:"ٹریک",hint:"⚠️ صرف تفریح۔",targetInfo:"ہدف",liveFeed:"لائیو",social:"سوشل",threat:"خطرہ",risk:"خطرہ",share:"شیئر",reset:"ری سیٹ",realTime:"لائیو",actions:"کام",satScan:"سیٹلائٹ",voice:"آواز",alarm:"الارم",full:"فل",anon:"گمنام",restart:"ری اسٹارٹ",privacy:"پرائیویسی",privacyText:"🔒 کوئی ڈیٹا نہیں۔",footer:"صرف تفریح۔",footer2:"100% کلائنٹ۔",chooseLang:"زبان",close:"بند",shareTitle:"TRINETRA شیئر",shareSub:"دوستوں کو بھیجیں!",
+aboutP1:"سنیماٹک ڈیش بورڈ۔",aboutP2:"اصلی:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko۔",aboutP3:"نقلی:",aboutP3S:"سوشل، فون، IP۔",aboutP4:"پرائیویسی:",aboutP4S:"100% کلائنٹ۔",aboutP5:"💚 تفریح کے لیے۔",stats:"اعداد",
+scanGlobal:"نیٹ ورک اسکین",scanAccess:"رسائی...",scanSat:"رابطہ...",scanFace:"شناخت...",scanFound:"ہدف مقفل"},
+id:{live:"LANGSUNG",syslog:"Log",globalData:"Data Global",opensky:"OpenSky",track:"LACAK",hint:"⚠️ Hanya hiburan.",targetInfo:"Target",liveFeed:"Live",social:"Sosial (Sim)",threat:"Ancaman",risk:"Risiko",share:"Bagikan",reset:"Reset",realTime:"Live",actions:"Aksi",satScan:"Satelit",voice:"Suara",alarm:"Alarm",full:"Penuh",anon:"Anon",restart:"Restart",privacy:"Privasi",privacyText:"🔒 Tidak ada pengumpulan.",footer:"Hanya hiburan.",footer2:"100% klien.",chooseLang:"Bahasa",close:"Tutup",shareTitle:"Bagikan TRINETRA",shareSub:"Kirim ke teman!",
+aboutP1:"Dashboard sinematik.",aboutP2:"Nyata:",aboutP2S:"OpenSky, USGS, Open-Meteo, ISS, CoinGecko.",aboutP3:"Simulasi:",aboutP3S:"sosial, telepon, IP.",aboutP4:"Privasi:",aboutP4S:"100% klien.",aboutP5:"💚 Untuk kesenangan.",stats:"Statistik",
+scanGlobal:"PINDAI JARINGAN",scanAccess:"Mengakses...",scanSat:"Menghubungkan...",scanFace:"Pengenalan...",scanFound:"TARGET TERKUNCI"}
+};
+
+var LANG_CODES = ['en','hi','es','fr','de','pt','ar','zh','ja','ru','bn','ur','id'];
+var LANG_NAMES = {en:'English',hi:'हिंदी',es:'Español',fr:'Français',de:'Deutsch',pt:'Português',ar:'العربية',zh:'中文',ja:'日本語',ru:'Русский',bn:'বাংলা',ur:'اردو',id:'Indonesia'};
+var lang = localStorage.getItem('tn_lang') || 'en';
+var soundOn = localStorage.getItem('tn_sound') !== 'off';
+var theme = localStorage.getItem('tn_theme') || 'dark';
+
+if(theme === 'light'){document.documentElement.setAttribute('data-theme','light');}
+
+function applyLang(){
+  var t = T[lang] || T.en;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    if(t[k] !== undefined) el.innerHTML = t[k];
+  });
+  document.documentElement.lang = lang;
+  document.documentElement.dir = (lang==='ar'||lang==='ur') ? 'rtl' : 'ltr';
+}
+applyLang();
+
+// Lang modal
+var lgEl = document.getElementById('langGrid');
+LANG_CODES.forEach(function(code){
+  var b = document.createElement('button');
+  b.className = 'lang-opt' + (code===lang?' active':'');
+  b.textContent = LANG_NAMES[code];
+  b.onclick = function(){
+    lang = code;
+    localStorage.setItem('tn_lang', lang);
+    applyLang();
+    lgEl.querySelectorAll('.lang-opt').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    setTimeout(function(){document.getElementById('langModal').classList.remove('open');},200);
+  };
+  lgEl.appendChild(b);
+});
+
+// Buttons
+document.getElementById('langBtn').onclick = function(){document.getElementById('langModal').classList.add('open');};
+document.getElementById('aboutBtn').onclick = function(){document.getElementById('aboutModal').classList.add('open');};
+document.getElementById('shareTopBtn').onclick = function(){document.getElementById('shareModal').classList.add('open');};
+
+// Theme
+document.getElementById('themeBtn').onclick = function(){
+  theme = theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('tn_theme', theme);
+  if(theme === 'light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('themeIcon').className='fas fa-sun';}
+  else{document.documentElement.removeAttribute('data-theme');document.getElementById('themeIcon').className='fas fa-moon';}
+};
+if(theme==='light'){document.getElementById('themeIcon').className='fas fa-sun';}
+
+// Sound
+document.getElementById('soundBtn').onclick = function(){
+  soundOn = !soundOn;
+  localStorage.setItem('tn_sound', soundOn?'on':'off');
+  document.getElementById('soundIcon').className = soundOn ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+  showToast(soundOn?'🔊 Sound ON':'🔇 Sound OFF');
+};
+if(!soundOn) document.getElementById('soundIcon').className = 'fas fa-volume-mute';
+
+// Close modal on outside click
+document.querySelectorAll('.modal').forEach(function(m){
+  m.addEventListener('click', function(e){if(e.target === m) m.classList.remove('open');});
+  var btn = m.querySelector('.modal-close');
+  if(btn) btn.onclick = function(){m.classList.remove('open');};
+});
+
+// ============ SOUND ============
+var audioCtx = null;
+function initAudio(){ if(!audioCtx){ try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} } }
+function beep(freq, dur, type){
+  if(!soundOn) return;
+  initAudio();
+  if(!audioCtx) return;
+  try{
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  }catch(e){}
+}
+document.body.addEventListener('touchstart', initAudio, {once:true});
+document.body.addEventListener('click', initAudio, {once:true});
+
+// ============ MATRIX ============
+var cvs = document.getElementById('matrix'), ctx = cvs.getContext('2d');
+function rsz(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;}
+rsz(); window.addEventListener('resize', rsz);
+var cols = Math.floor(cvs.width/14), drops = new Array(cols).fill(1);
+var chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF';
+setInterval(function(){
+  ctx.fillStyle='rgba(0,0,0,0.06)';
+  ctx.fillRect(0,0,cvs.width,cvs.height);
+  ctx.fillStyle = theme==='light' ? '#006622' : '#00ff41';
+  ctx.font='14px monospace';
+  for(var i=0;i<drops.length;i++){
+    var t = chars.charAt(Math.floor(Math.random()*chars.length));
+    ctx.fillText(t, i*14, drops[i]*14);
+    if(drops[i]*14 > cvs.height && Math.random() > 0.975) drops[i]=0;
+    drops[i]++;
+  }
+}, 55);
+
+// ============ CLOCK ============
+function updClock(){
+  var d = new Date();
+  document.getElementById('clockUTC').textContent = String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+':'+String(d.getUTCSeconds()).padStart(2,'0');
+}
+updClock(); setInterval(updClock, 1000);
+
+// ============ SESSION TIMER ============
+var sessionStart = Date.now();
+var scanCount = 0, targetCount = 0;
+function updStats(){
+  var el = Math.floor((Date.now()-sessionStart)/1000);
+  document.getElementById('stUptime').textContent = el < 60 ? el+'s' : (el < 3600 ? Math.floor(el/60)+'m' : Math.floor(el/3600)+'h');
+  document.getElementById('stScans').textContent = scanCount;
+  document.getElementById('stTargets').textContent = targetCount;
+}
+setInterval(updStats, 1000);
+
+// ============ BOOT ============
+var bootLines = [
+  '> TRINETRA kernel v1.0 initializing...',
+  '> Loading neural encryption modules... <span class="ok">OK</span>',
+  '> Connecting to public data feeds...',
+  '>   → OpenSky Network · <span class="ok">CONNECTED</span>',
+  '>   → USGS Earthquake Feed · <span class="ok">CONNECTED</span>',
+  '>   → Open-Meteo Weather API · <span class="ok">CONNECTED</span>',
+  '>   → ISS Live Tracker · <span class="ok">CONNECTED</span>',
+  '>   → CoinGecko Crypto · <span class="ok">CONNECTED</span>',
+  '> Loading facial recognition engine...',
+  '> Loading voiceprint database... <span class="ok">OK</span>',
+  '> Scanning dark web nodes...',
+  '>   → <span class="warn">WARNING: trace detected</span>',
+  '> Rerouting through 14 proxies... <span class="ok">OK</span>',
+  '> <span class="ok">TRINETRA ONLINE.</span>',
+  '> Welcome, Operator.'
+];
+var bt = document.getElementById('bootTerminal'), bi = 0;
+function bootType(){
+  if(bi >= bootLines.length){
+    document.getElementById('bootStatus').textContent = 'SYSTEM READY';
+    beep(880,0.15,'sine');
+    setTimeout(function(){
+      beep(1200,0.2,'sine');
+      document.getElementById('bootScreen').classList.add('hide');
+      document.getElementById('main').classList.add('visible');
+      setTimeout(function(){document.getElementById('bootScreen').style.display='none';},800);
+      startLogs();
+      loadRealData();
+    }, 600);
+    return;
+  }
+  var d = document.createElement('div');
+  d.className = 'line';
+  d.innerHTML = bootLines[bi];
+  bt.appendChild(d);
+  bt.scrollTop = bt.scrollHeight;
+  beep(600 + Math.random()*400, 0.03, 'square');
+  bi++;
+  setTimeout(bootType, 170 + Math.random()*180);
+}
+setTimeout(bootType, 300);
+
+// ============ LOGS ============
+var logMsgs = [
+  'OpenSky sync: aircraft count updated',
+  'USGS: new quake detected',
+  'ISS position refreshed',
+  'Weather data updated',
+  'BTC price refreshed',
+  'Satellite KA-9 handshake OK',
+  'Packet intercepted: 4.2 MB',
+  'Device fingerprint unique',
+  'Cell tower triangulation',
+  'Anomaly in sector 7',
+  'Tor exit node rotated',
+  'Encrypted channel established',
+  'Face hash stored in cache',
+  'Predictive location updated',
+  'Voice sample analyzed'
+];
+function addLog(){
+  var t = document.getElementById('terminal');
+  var d = document.createElement('div');
+  d.className = 'log';
+  var now = new Date();
+  var time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+  var m = logMsgs[Math.floor(Math.random()*logMsgs.length)];
+  var cls = Math.random()>0.92 ? 'warn' : (Math.random()>0.88 ? 'err' : (Math.random()>0.7?'info':''));
+  d.innerHTML = '<span class="time">['+time+']</span><span class="'+cls+'">'+m+'</span>';
+  t.appendChild(d);
+  t.scrollTop = t.scrollHeight;
+  if(t.children.length > 40) t.removeChild(t.firstChild);
+}
+function startLogs(){
+  for(var i=0;i<10;i++) setTimeout(addLog, i*250);
+  setInterval(addLog, 2400);
+}
+
+// ============ MAP ============
+var map = L.map('map',{zoomControl:false, attributionControl:false, worldCopyJump:true}).setView([22, 78], 3);
+L.control.zoom({position:'bottomright'}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
+
+var layers = {sat:null, flights:null, quakes:null, cities:null, iss:null};
+var issMarker = null;
+var userMarkers = [];
+
+// Cities
+var cities = [
+  [40.7128,-74.0060,'NEW YORK'],[51.5074,-0.1278,'LONDON'],[35.6762,139.6503,'TOKYO'],
+  [55.7558,37.6173,'MOSCOW'],[28.6139,77.2090,'DELHI'],[-33.8688,151.2093,'SYDNEY'],
+  [48.8566,2.3522,'PARIS'],[37.7749,-122.4194,'SAN FRANCISCO'],[25.2048,55.2708,'DUBAI'],
+  [1.3521,103.8198,'SINGAPORE'],[-23.5505,-46.6333,'SAO PAULO'],[19.4326,-99.1332,'MEXICO'],
+  [30.0444,31.2357,'CAIRO'],[-1.2864,36.8172,'NAIROBI'],[22.5726,88.3639,'KOLKATA']
+];
+function buildCities(){
+  var g = L.layerGroup();
+  cities.forEach(function(c){
+    L.circleMarker([c[0],c[1]], {radius:4, color:'#00ff41', fillColor:'#00ff41', fillOpacity:0.7, weight:1})
+      .bindTooltip(c[2], {direction:'top'}).addTo(g);
+  });
+  return g;
+}
+
+function buildSat(){
+  var g = L.layerGroup();
+  g.addLayer(L.circle([28.6139,77.2090], {radius:1500000, color:'#00ff41', fillColor:'#00ff41', fillOpacity:0.04, weight:1, dashArray:'5,5'}));
+  g.addLayer(L.circle([28.6139,77.2090], {radius:800000, color:'#00ff41', fillColor:'#00ff41', fillOpacity:0.06, weight:1, dashArray:'5,5'}));
+  g.addLayer(L.circle([28.6139,77.2090], {radius:300000, color:'#00ff41', fillColor:'#00ff41', fillOpacity:0.08, weight:1}));
+  return g;
+}
+
+// ============ REAL DATA ============
+function fetchISS(){
+  fetch('https://api.wheretheiss.at/v1/satellites/25544')
+    .then(r => r.json())
+    .then(function(d){
+      document.getElementById('wISS').textContent = d.latitude.toFixed(2)+'°, '+d.longitude.toFixed(2)+'°';
+      document.getElementById('wISSsub').textContent = 'Alt '+Math.round(d.altitude)+'km · '+Math.round(d.velocity)+'km/h';
+      if(issMarker) map.removeLayer(issMarker);
+      issMarker = L.circleMarker([d.latitude,d.longitude], {radius:8, color:'#ffcc00', fillColor:'#ffcc00', fillOpacity:0.9, weight:2})
+        .bindTooltip('ISS · '+Math.round(d.altitude)+'km', {direction:'top'});
+      if(layers.iss && map.hasLayer(layers.iss)) issMarker.addTo(map);
+    })
+    .catch(function(){
+      document.getElementById('wISS').textContent = 'offline';
+      document.getElementById('wISSsub').textContent = 'api offline';
+    });
+}
+
+function fetchQuakes(){
+  fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson')
+    .then(r => r.json())
+    .then(function(d){
+      var n = d.features.length;
+      document.getElementById('wQuakes').textContent = n;
+      document.getElementById('wQuakesSub').textContent = 'M2.5+ 24h';
+      if(n > 0){
+        var last = d.features[0].properties;
+        document.getElementById('wLastQuake').textContent = 'M'+last.mag.toFixed(1);
+        document.getElementById('wLastQuakeSub').textContent = last.place;
+      }
+      var g = L.layerGroup();
+      d.features.slice(0,80).forEach(function(f){
+        var mag = f.properties.mag;
+        var col = mag > 5 ? '#ff0033' : (mag > 4 ? '#ffcc00' : '#00ff41');
+        var r = Math.max(3, mag*2);
+        L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {radius:r, color:col, fillColor:col, fillOpacity:0.4, weight:1})
+          .bindTooltip('M'+mag.toFixed(1)+' · '+f.properties.place, {direction:'top'}).addTo(g);
+      });
+      if(layers.quakes && map.hasLayer(layers.quakes)) map.removeLayer(layers.quakes);
+      layers.quakes = g;
+      if(document.querySelector('[data-layer="quakes"]').classList.contains('active')) g.addTo(map);
+    })
+    .catch(function(){
+      document.getElementById('wQuakes').textContent = 'offline';
+    });
+}
+
+function fetchWeather(){
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=28.6139&longitude=77.2090&current=temperature_2m,weather_code,wind_speed_10m')
+    .then(r => r.json())
+    .then(function(d){
+      var c = d.current;
+      var codes = {0:'☀️ Clear',1:'🌤️ Mostly clear',2:'⛅ Partly',3:'☁️ Cloudy',45:'🌫️ Fog',48:'🌫️ Fog',51:'🌦️ Drizzle',61:'🌧️ Rain',63:'🌧️ Rain',65:'🌧️ Heavy',71:'🌨️ Snow',80:'🌦️ Showers',95:'⛈️ Storm'};
+      var txt = codes[c.weather_code] || '🌡️ Code '+c.weather_code;
+      document.getElementById('wWeather').textContent = c.temperature_2m+'°C';
+      document.getElementById('wWeatherSub').textContent = txt + ' · wind '+c.wind_speed_10m+'km/h';
+    })
+    .catch(function(){
+      document.getElementById('wWeather').textContent = 'offline';
+    });
+}
+
+function fetchCrypto(){
+  fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')
+    .then(r => r.json())
+    .then(function(d){
+      var b = d.bitcoin.usd;
+      var ch = d.bitcoin.usd_24h_change;
+      document.getElementById('wBTC').textContent = '$'+b.toLocaleString();
+      document.getElementById('wBTCsub').textContent = (ch>0?'▲ +':'▼ ')+ch.toFixed(2)+'% 24h';
+      document.getElementById('wBTCsub').style.color = ch>0 ? '#00ff41' : '#ff0033';
+    })
+    .catch(function(){
+      document.getElementById('wBTC').textContent = 'offline';
+    });
+}
+
+function fetchFlights(){
+  fetch('https://opensky-network.org/api/states/all?lamin=8&lomin=68&lamax=35&lomax=98')
+    .then(r => r.json())
+    .then(function(d){
+      if(!d.states){ throw new Error('no data'); }
+      var n = d.states.length;
+      document.getElementById('wFlights').textContent = n;
+      document.getElementById('wFlightCount').textContent = n;
+      var g = L.layerGroup();
+      d.states.slice(0, 200).forEach(function(s){
+        var lat = s[6], lon = s[5], alt = s[13], onGround = s[8];
+        if(lat && lon && !onGround){
+          L.circleMarker([lat, lon], {radius:2, color:'#00ccff', fillColor:'#00ccff', fillOpacity:0.8, weight:1})
+            .bindTooltip((s[1]||'?').trim()+' · '+(s[2]||'?'), {direction:'top'}).addTo(g);
+        }
+      });
+      if(layers.flights && map.hasLayer(layers.flights)) map.removeLayer(layers.flights);
+      layers.flights = g;
+      if(document.querySelector('[data-layer="flights"]').classList.contains('active')) g.addTo(map);
+    })
+    .catch(function(){
+      document.getElementById('wFlights').textContent = 'offline';
+      document.getElementById('wFlightCount').textContent = '—';
+    });
+}
+
+function fetchSpace(){
+  document.getElementById('wSpace').textContent = 'Quiet';
+  document.getElementById('wSpaceSub').textContent = 'Kp ~2 · No storm';
+}
+
+function loadRealData(){
+  fetchISS(); fetchQuakes(); fetchWeather(); fetchCrypto(); fetchFlights(); fetchSpace();
+  setInterval(fetchISS, 8000);
+  setInterval(fetchCrypto, 60000);
+  setInterval(fetchWeather, 300000);
+  setInterval(fetchQuakes, 300000);
+  setInterval(fetchFlights, 180000);
+}
+
+// Build layers
+layers.sat = buildSat().addTo(map);
+layers.cities = buildCities().addTo(map);
+layers.iss = L.layerGroup().addTo(map);
+layers.flights = L.layerGroup().addTo(map);
+layers.quakes = L.layerGroup().addTo(map);
+
+// Layer toggles
+document.querySelectorAll('.layer-btn').forEach(function(b){
+  b.onclick = function(){
+    var k = this.dataset.layer;
+    this.classList.toggle('active');
+    if(k === 'iss'){
+      if(this.classList.contains('active')){
+        if(issMarker) issMarker.addTo(map);
+      } else {
+        if(issMarker) map.removeLayer(issMarker);
+      }
+      return;
+    }
+    if(!layers[k]) return;
+    if(this.classList.contains('active')){ layers[k].addTo(map); }
+    else { map.removeLayer(layers[k]); }
+  };
+});
+
+// ============ TICKER ============
+function buildTicker(){
+  var items = [
+    'TRINETRA v1.0 ONLINE',
+    'LIVE · OPENSKY · USGS · OPEN-METEO · ISS · COINGECKO',
+    '13 LANGUAGES',
+    '100% CLIENT-SIDE · ZERO TRACKING',
+    'ENTERTAINMENT ONLY · NO REAL SURVEILLANCE',
+    'WORKS OFFLINE AS PWA',
+    'VOICE CONTROL ENABLED'
+  ];
+  var html = '';
+  items.forEach(function(x){ html += '<span>'+x+'</span>'; });
+  html += html;
+  document.getElementById('tickerContent').innerHTML = html;
+}
+buildTicker();
+
+// ============ HELPERS ============
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function fakeIP(){return rand(11,223)+'.'+rand(0,255)+'.'+rand(0,255)+'.'+rand(1,254);}
+function fakePhone(){return '+91 '+rand(70,99)+rand(10000000,99999999);}
+function fakeUser(name){
+  var p = name.toLowerCase().replace(/[^a-z]/g,' ').trim().split(/\s+/);
+  var f = p[0]||'user', l = p[1]||'';
+  var s = [f+l+rand(10,99), f+'_'+l, f+'.'+l+rand(10,99), f+l+rand(100,999), f.charAt(0)+l+rand(1000,9999)];
+  return pick(s).substring(0,20);
+}
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt = setTimeout(function(){t.classList.remove('show');},2800);
+}
+
+// ============ SCAN ============
+var searchBtn = document.getElementById('searchBtn');
+var scanning = document.getElementById('scanning');
+
+searchBtn.onclick = function(){
+  var name = document.getElementById('targetInput').value.trim();
+  if(!name){ showToast('⚠️ Enter a name'); return; }
+  startScan(name);
+};
+document.getElementById('targetInput').addEventListener('keypress', function(e){
+  if(e.key==='Enter') searchBtn.click();
+});
+
+function scanLog(msg, cls){
+  var l = document.getElementById('scanLines');
+  var d = document.createElement('div');
+  d.innerHTML = '<span style="color:#008822;">['+new Date().toLocaleTimeString()+']</span> '+(cls?'<span class="'+cls+'">'+msg+'</span>':msg);
+  d.style.opacity = 0;
+  d.style.animation = 'typeIn .3s forwards';
+  l.appendChild(d);
+  l.scrollTop = l.scrollHeight;
+  if(l.children.length > 5) l.removeChild(l.firstChild);
+}
+
+function startScan(name){
+  searchBtn.disabled = true;
+  scanCount++;
+  scanning.classList.add('active');
+  document.getElementById('scanLines').innerHTML = '';
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('alertFlash').classList.add('active');
+  setTimeout(function(){document.getElementById('alertFlash').classList.remove('active');},600);
+  beep(400,0.2,'sawtooth');
+  
+  var t = T[lang] || T.en;
+  var steps = [
+    {t:t.scanGlobal, s:t.scanAccess, p:12, d:850},
+    {t:'SATELLITE UPLINK', s:'23 satellites connected...', p:28, d:850},
+    {t:'CCTV GRID ACCESS', s:'14.8M public cameras...', p:45, d:850},
+    {t:'RECOGNITION ENGINE', s:t.scanFace, p:62, d:1050},
+    {t:'SIGNAL TRIANGULATION', s:'4G/5G towers syncing...', p:78, d:850},
+    {t:'DEVICE DATA DECRYPT', s:'Analyzing locally...', p:92, d:850},
+    {t:t.scanFound, s:'<span style="color:#ff0033;font-weight:900;">⚠ '+name.toUpperCase()+' LOCATED</span>', p:100, d:750}
+  ];
+  var i = 0;
+  function next(){
+    if(i >= steps.length){ finish(name); return; }
+    var s = steps[i];
+    document.getElementById('scanText').textContent = s.t;
+    document.getElementById('scanSub').innerHTML = s.s;
+    document.getElementById('scanBar').style.width = s.p+'%';
+    scanLog(s.t, i>=4?'warn':'');
+    beep(600+i*80, 0.08, 'square');
+    i++;
+    setTimeout(next, s.d);
+  }
+  next();
+}
+
+function finish(name){
+  beep(1000,0.15,'sine');
+  setTimeout(function(){beep(1400,0.2,'sine');},150);
+  setTimeout(function(){beep(1800,0.3,'sine');},320);
+  
+  scanning.classList.remove('active');
+  searchBtn.disabled = false;
+  targetCount++;
+  
+  document.getElementById('results').classList.add('active');
+  fillData(name);
+  requestPerms();
+  
+  document.getElementById('alertFlash').classList.add('active');
+  setTimeout(function(){document.getElementById('alertFlash').classList.remove('active');},600);
+  
+  var t = document.getElementById('terminal');
+  var d = document.createElement('div');
+  d.className = 'log';
+  d.innerHTML = '<span class="time">['+new Date().toLocaleTimeString()+']</span><span class="err">TARGET LOCKED: '+name.toUpperCase()+'</span>';
+  t.appendChild(d); t.scrollTop = t.scrollHeight;
+  
+  var threat = rand(65,98);
+  document.getElementById('threatFill').style.width = threat+'%';
+  document.getElementById('riskVal').textContent = threat+'%';
+  
+  setTimeout(function(){ document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'}); }, 300);
+}
+
+function fillData(name){
+  document.getElementById('rName').textContent = name.toUpperCase();
+  document.getElementById('rGps').textContent = 'Locking...';
+  document.getElementById('rLocation').textContent = 'Locating...';
+  document.getElementById('rPhone').textContent = fakePhone();
+  document.getElementById('rIp').textContent = fakeIP();
+  
+  var d = navigator.userAgent.split(') ')[0].split(' (')[1] || 'Unknown';
+  document.getElementById('rDevice').textContent = d.substring(0,32);
+  
+  var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if(conn){
+    document.getElementById('rNetwork').textContent = (conn.effectiveType||'?').toUpperCase()+' · '+(conn.downlink||'?')+'Mbps';
+  } else {
+    document.getElementById('rNetwork').textContent = 'WIFI · Connected';
+  }
+  
+  if(navigator.getBattery){
+    navigator.getBattery().then(function(b){
+      document.getElementById('rBattery').textContent = Math.round(b.level*100)+'% '+(b.charging?'⚡':'');
+    });
+  } else {
+    document.getElementById('rBattery').textContent = rand(20,95)+'%';
+  }
+  
+  var u = fakeUser(name);
+  document.getElementById('rWhatsapp').textContent = u;
+  document.getElementById('rInsta').textContent = '@'+u;
+  document.getElementById('rFacebook').textContent = u+'.fb';
+  document.getElementById('rTelegram').textContent = '@'+u;
+  document.getElementById('rTwitter').textContent = '@'+u;
+}
+
+// ============ PERMISSIONS ============
+var camStream = null, micStream = null;
+
+function requestPerms(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(p){
+      var lat = p.coords.latitude.toFixed(4);
+      var lon = p.coords.longitude.toFixed(4);
+      document.getElementById('rGps').textContent = lat+'°N, '+lon+'°E';
+      document.getElementById('rLocation').textContent = 'GPS · ±'+Math.round(p.coords.accuracy)+'m';
+      
+      userMarkers.forEach(function(m){ map.removeLayer(m); });
+      userMarkers = [];
+      userMarkers.push(L.circleMarker([p.coords.latitude, p.coords.longitude], {radius:12, color:'#ff0033', fillColor:'#ff0033', fillOpacity:0.85, weight:3}).addTo(map));
+      userMarkers.push(L.circle([p.coords.latitude,p.coords.longitude], {radius:50000, color:'#ff0033', fillColor:'#ff0033', fillOpacity:0.1, weight:1, dashArray:'5,5'}).addTo(map));
+      map.setView([p.coords.latitude, p.coords.longitude], 12);
+      
+      var t = document.getElementById('terminal');
+      var d = document.createElement('div');
+      d.className = 'log';
+      d.innerHTML = '<span class="time">['+new Date().toLocaleTimeString()+']</span><span class="err">GPS: '+lat+','+lon+'</span>';
+      t.appendChild(d); t.scrollTop = t.scrollHeight;
+    }, function(){
+      document.getElementById('rGps').textContent = rand(19,29)+'.'+rand(1000,9999)+'°N, '+rand(72,88)+'.'+rand(1000,9999)+'°E';
+      document.getElementById('rLocation').textContent = 'Estimated via network';
+    }, {enableHighAccuracy:true, timeout:8000});
+  }
+  
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false})
+      .then(function(s){
+        if(camStream){ camStream.getTracks().forEach(function(t){t.stop();}); }
+        camStream = s;
+        document.getElementById('feedBox').style.display = 'block';
+        document.getElementById('camFeed').srcObject = s;
+      })
+      .catch(function(){
+        document.getElementById('feedBox').style.display = 'none';
+      });
+    
+    navigator.mediaDevices.getUserMedia({audio:true})
+      .then(function(s){
+        if(micStream){ micStream.getTracks().forEach(function(t){t.stop();}); }
+        micStream = s;
+        try{
+          initAudio();
+          if(!audioCtx) return;
+          var src = audioCtx.createMediaStreamSource(s);
+          var analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          src.connect(analyser);
+          
+          var c2 = document.getElementById('audioViz');
+          var x2 = c2.getContext('2d');
+          c2.width = c2.offsetWidth; c2.height = 55;
+          var buf = new Uint8Array(analyser.frequencyBinCount);
+          
+          (function draw(){
+            requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(buf);
+            x2.fillStyle = '#000';
+            x2.fillRect(0,0,c2.width,c2.height);
+            var bw = c2.width / buf.length;
+            for(var i=0;i<buf.length;i++){
+              var h = (buf[i]/255) * c2.height;
+              x2.fillStyle = 'hsl('+(120+buf[i]/3)+',100%,50%)';
+              x2.fillRect(i*bw, c2.height-h, bw-1, h);
+            }
+          })();
+        }catch(e){}
+      })
+      .catch(function(){});
+  }
+}
+
+// ============ ACTIONS ============
+document.getElementById('btnScan').onclick = function(){
+  showToast('📡 Re-scanning feeds...');
+  beep(700,0.1,'square');
+  fetchISS(); fetchFlights(); fetchQuakes(); addLog();
+};
+document.getElementById('btnAnon').onclick = function(){
+  showToast('🕵️ Anonymous mode ON');
+  beep(300,0.15,'sawtooth');
+  addLog();
+};
+document.getElementById('btnVoice').onclick = function(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ showToast('⚠️ Voice not supported'); return; }
+  try{
+    var r = new SR();
+    r.lang = 'en-US';
+    r.onresult = function(e){
+      var txt = e.results[0][0].transcript;
+      document.getElementById('targetInput').value = txt;
+      showToast('🎤 Heard: '+txt);
+      setTimeout(function(){ searchBtn.click(); }, 400);
+    };
+    r.onerror = function(){ showToast('⚠️ Voice error'); };
+    r.start();
+    showToast('🎤 Listening...');
+    beep(900,0.1,'sine');
+  }catch(e){ showToast('⚠️ Voice error'); }
+};
+document.getElementById('btnFull').onclick = function(){
+  if(!document.fullscreenElement){
+    if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  } else {
+    if(document.exitFullscreen) document.exitFullscreen();
+  }
+};
+document.getElementById('btnAlarm').onclick = function(){
+  beep(200,0.4,'sawtooth');
+  setTimeout(function(){beep(200,0.4,'sawtooth');},500);
+  setTimeout(function(){beep(200,0.4,'sawtooth');},1000);
+  document.getElementById('alertFlash').classList.add('active');
+  setTimeout(function(){document.getElementById('alertFlash').classList.remove('active');},1800);
+  showToast('🚨 ALERT · INTRUSION DETECTED');
+  addLog();
+};
+document.getElementById('btnRestart').onclick = function(){ location.reload(); };
+document.getElementById('resetBtn').onclick = function(){
+  document.getElementById('targetInput').value = '';
+  document.getElementById('results').classList.remove('active');
+  if(camStream){ camStream.getTracks().forEach(function(t){t.stop();}); camStream=null; }
+  if(micStream){ micStream.getTracks().forEach(function(t){t.stop();}); micStream=null; }
+  document.getElementById('feedBox').style.display = 'none';
+  userMarkers.forEach(function(m){ map.removeLayer(m); });
+  userMarkers = [];
+  showToast('♻️ Reset complete');
+  addLog();
+};
+
+// ============ SHARE ============
+var pageUrl = location.href.split('?')[0].split('#')[0];
+var shareTitle = "TRINETRA · Global Intelligence Dashboard";
+var shareText = "🎬 TRINETRA — cinematic global intelligence dashboard with LIVE flights, earthquakes, ISS, weather. 100% free & fun! Check it out:";
+
+function setupShare(prefix){
+  document.getElementById(prefix+'W').href = "https://api.whatsapp.com/send?text="+encodeURIComponent(shareText+"\n\n"+pageUrl);
+  document.getElementById(prefix+'F').href = "https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(pageUrl)+"&display=popup";
+  document.getElementById(prefix+'X').href = "https://x.com/intent/tweet?text="+encodeURIComponent(shareText)+"&url="+encodeURIComponent(pageUrl);
+  document.getElementById(prefix+'T').href = "https://t.me/share/url?url="+encodeURIComponent(pageUrl)+"&text="+encodeURIComponent(shareText);
+  document.getElementById(prefix+'L').href = "https://www.linkedin.com/shareArticle?mini=true&url="+encodeURIComponent(pageUrl);
+  document.getElementById(prefix+'E').href = "mailto:?subject="+encodeURIComponent(shareTitle)+"&body="+encodeURIComponent(shareText+"\n\n"+pageUrl);
+  var ig = document.getElementById(prefix+'I');
+  if(ig) ig.onclick = function(){
+    copyToClipboard(shareText+"\n\n"+pageUrl);
+    showToast('📷 Link copied! Open Instagram');
+    setTimeout(function(){ try{ location.href='instagram://app'; }catch(e){} }, 700);
+  };
+  var cp = document.getElementById(prefix+'C');
+  if(cp) cp.onclick = function(){
+    copyToClipboard(pageUrl);
+    showToast('✅ Link copied!');
+  };
+}
+setupShare('s');
+setupShare('m');
+
+function copyToClipboard(text){
+  if(navigator.clipboard){ navigator.clipboard.writeText(text).catch(function(){}); }
+  else {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+document.getElementById('shareBtn').onclick = function(){
+  var name = document.getElementById('rName').textContent;
+  var threat = document.getElementById('riskVal').textContent;
+  var txt = '🎯 TRINETRA locked on '+name+' · Threat: '+threat+'\nTry: '+pageUrl;
+  if(navigator.share){
+    navigator.share({title:'TRINETRA', text:txt}).catch(function(){});
+  } else {
+    copyToClipboard(txt);
+    showToast('📋 Copied!');
+  }
+};
+
+// Prevent double tap zoom
+document.addEventListener('dblclick', function(e){e.preventDefault();}, {passive:false});
+
+// Service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+
+console.log('%c👁️ TRINETRA v1.0','color:#00ff41;font-size:24px;font-weight:bold;text-shadow:0 0 10px #00ff41;');
+console.log('%cEntertainment only. Real: OpenSky, USGS, Open-Meteo, ISS, CoinGecko.','color:#00ff41;font-size:12px;');
+</script>
+</body>
+</html>
